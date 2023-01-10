@@ -1,0 +1,69 @@
+# cmu15445-连接算法
+
+
+<img src="/cover/join-algorithms.png"/>
+
+## join 算子输出
+
+- 取决于执行、存储模型和查询本身
+- 可以返回整个 tuple，也可以只返回 record id
+
+## 连接算法
+
+### nested loop join
+
+#### stupid nested loop join
+
+<div align="center"><img src="/cmu15445-连接算法/stupid.png" style="zoom:33%;" /></div>
+io次数：M+(m*N)
+<div align="center"><img src="/cmu15445-连接算法/nested-cost.png" style="zoom:33%;" /></div>
+
+#### block nested loop join
+
+<div align="center"><img src="/cmu15445-连接算法/block.png" style="zoom:33%;" /></div>
+io次数：M+(M/B*N)
+
+#### index nested loop join
+
+<div align="center"><img src="/cmu15445-连接算法/index.png" style="zoom:33%;" /></div>
+io次数：M+(m*C)
+
+### sort-merge join
+
+<div align="center"><img src="/cmu15445-连接算法/sort-merge.png" style="zoom:50%;" /></div>
+
+- outer table 可能需要回溯
+- io 次数：排序+合并,合并次数约为 M+N(因为回溯的存在)
+
+### hash join
+
+#### 算法
+
+- 使用 outer table 构建哈希表
+- 对 inner table 的每一条 tuple 哈希，并查看是否匹配
+<div align="center"><img src="/cmu15445-连接算法/hash-join.png" style="zoom:50%;" /></div>
+
+#### 哈希表内容
+
+- key: 连接字段
+- value:tuple/tuple id
+
+#### 优化
+
+使用布隆过滤器,inner tuple 先查布隆过滤器，再查 hash table
+
+### grace hash join
+
+- 适用于内存不足的情况，无法容纳整个 hash table
+- 对 inner 和 outer table 均进行哈希，分别构建 paritition, 分别构建是为了避免随机 io
+- 对相对应的两个 partition 进行查看 tuple 是否匹配(nested loop join)
+- 如果 一个 hash value 对应的 partition 过多，则使用新的哈希函数递归地分区
+
+<div align="center"><img src="/cmu15445-连接算法/grace-hash-join.png" style="zoom:50%;" /></div>
+
+io 次数
+
+- partition:2\*(M+N)
+- probe:(M+N)
+
+

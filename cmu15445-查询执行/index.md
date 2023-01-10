@@ -1,0 +1,173 @@
+# cmu15445-查询执行
+
+
+<img src="/cover/query-execution.png"/>
+
+## processing model
+
+### iterator model
+
+- 实现了 next 函数，每个算子通过 next 从它的孩子获取 tuple，并进行进一步的处理
+- 每次调用，返回一个 tuple 或 null
+- tuple breaker: join,subquery,order by 会使 pipeline 阻塞，因为它们需要全部的数据
+<div align="center"><img src="/cmu15445-查询执行/iterator-model.png" style="zoom:33%;" /></div>
+
+### materialization model
+
+- 一次性返回全部结果
+- 可以提供额外的信息从而避免扫描过多的 tuples
+- 返回值可以是行也可以是列
+- 适用于 OLTP，函数调用次数少
+- 不适用于 OLAP，无法立即返回结果
+<div align="center"><img src="/cmu15445-查询执行/materialization-model.png" style="zoom:33%;" /></div>
+
+### vectorized/batch model
+
+与 iterator 模型类似，但每次返回多组结果
+
+<div align="center"><img src="/cmu15445-查询执行/vectorization-model.png" style="zoom:33%;" /></div>
+
+## access methods
+
+### sequential scan
+
+依次遍历 pages 和 tables
+
+<div align="center"><img src="/cmu15445-查询执行/sequential-scan.png" style="zoom:33%;" /></div>
+
+### optimizations
+
+#### zone map
+
+维护表中的一些聚集值，线性扫描前首先查 zone map 进一步决定是否要进行扫描
+
+<div align="center"><img src="/cmu15445-查询执行/zone-maps.png" style="zoom:33%;" /></div>
+
+#### late materialization
+
+孩子结点只向上传递偏移量，最终在根节点再返回 tuple
+
+<div align="center"><img src="/cmu15445-查询执行/late-materialization.png" style="zoom:33%;" /></div>
+
+#### heap clustering
+
+使用聚簇索引可以顺序取 pages
+
+<div align="center"><img src="/cmu15445-查询执行/heap-clustering.png" style="zoom:33%;" /></div>
+
+### index scan
+
+选择区分度更高的索引
+
+### multi-index scan
+
+- 依次使用每个索引筛选出 id
+- 对根据不同索引筛选出来的集合求并集或交集
+- 取回刚刚的结果，继续执行其它的谓词
+
+### index scan page sorting
+
+扫描非聚簇索引是低效的，可以获取所有需要访问的 page，然后根据 page id 进行排序
+
+<div align="center"><img src="/cmu15445-查询执行/index-scan-page-sorting.png" style="zoom:33%;" /></div>
+
+## expression evaluation
+
+<div align="center"><img src="/cmu15445-查询执行/expression-evaluation.png" style="zoom:33%;" /></div>
+
+构建表达式树比较慢，更好的方法是直接比较
+
+## parallel processing models
+
+### process per worker
+
+- 基于操作系统调度
+- 需要共享内存
+- 一个进程挂了不会导致系统崩溃
+<div align="center"><img src="/cmu15445-查询执行/process-per-worker.png" style="zoom:33%;" /></div>
+
+### process pool
+
+- 基于操作系统调度
+- 需要共享内存
+- 一个进程挂了不会导致系统崩溃
+- CPU 缓存局部性差
+<div align="center"><img src="/cmu15445-查询执行/process-pool.png" style="zoom:33%;" /></div>
+
+### thread per worker
+
+- 不需要操作系统调度和共享内存
+- 线程挂了可能导致系统崩溃
+
+<div align="center"><img src="/cmu15445-查询执行/thread-per-worker.png" style="zoom:33%;" /></div>
+
+## query parallelism
+
+### intra query
+
+并发地执行算子。对于 grace hash join 而言，而已为每一个 partition 分配一个线程来执行 probe。
+
+#### intra-operator(horizontal)
+
+每一个 worker 并发地执行不同 pages。
+
+<div align="center"><img src="/cmu15445-查询执行/intra-operator.png" style="zoom:33%;" /></div>
+exchange算子的作用
+
+- 聚集
+  - 将多个 worker 的输出整合为一个输出
+- 重新分区
+  - 重新组织多个输出
+- 拆分
+  - 将输入拆分成多组输出
+  <div align="center"><img src="/cmu15445-查询执行/exchange.png" style="zoom:33%;" /></div>
+
+#### inter-operator(vertical)
+
+不同的 worker 并发地执行不同算子。
+
+<div align="center"><img src="/cmu15445-查询执行/inter-operator.png" style="zoom:33%;" /></div>
+
+#### bushy
+
+intra-operator 的扩展，可以并发地执行查询计划的不同的算子,但依然需要 exchange 算子。
+
+<div align="center"><img src="/cmu15445-查询执行/bushy.png" style="zoom:33%;" /></div>
+
+### inter query
+
+并发地执行查询。
+
+## io parallelism
+
+- 一个数据库对应多个磁盘
+- 一个磁盘队医一个数据库
+- 一个磁盘对应一个关系
+- 将关系拆分到多个磁盘上
+
+## multi-disk parallelism
+
+RAID，管理多个物理存储设备，可以将其看作一整个逻辑存储设备。
+
+<div align="center"><img src="/cmu15445-查询执行/raid.png" style="zoom:33%;" /></div>
+
+## partitioning
+
+将数据库表单独划分在不同的物理段上。
+
+### vertical partioning
+
+按列分区,如何恢复？
+
+<div align="center"><img src="/cmu15445-查询执行/vertical-partitioning.png" style="zoom:33%;" /></div>
+
+### horizontal partitioning
+
+按行分区
+
+- 哈希
+- 按范围
+- 按谓词
+<div align="center"><img src="/cmu15445-查询执行/horizontal-partitioning.png" style="zoom:33%;" /></div>
+
+

@@ -1,0 +1,64 @@
+# cmu15445-哈希表
+
+
+<img src="/cover/hash-table.png"/>
+
+## hash functions
+
+对于数据库而言，一般不适用密码学中的哈希函数，同时还要保证效率和冲突率，常用的一些哈希函数如下图所示。
+
+<div align="center"><img src="/cmu15445-哈希表/hash-function.png" style="zoom:50%;" /></div>
+
+## static hashing schemes
+
+### 线性探测哈希
+
+- 插入时如果遇到冲突，则继续寻找下一个 slot，直至找到了空 slot
+- 由于存在冲突的情况，查询时需要线性扫描
+- 删除时需要设置墓碑或移动后面的元素，防止无法查询到 key
+- 重复的 key
+  - k/v 分离存储，通过指针指向 key 值对应的全部 value
+  - k/v 存储在一起，允许出现重复的 key
+
+### 罗宾汉哈希
+
+- 额外存放 key 实际存放位置与原始位置的偏移量
+- 为了防止一个 key 距离其原始位置过远，应在插入时比较偏移量并进行位置上的调整
+<div align="center"><img src="/cmu15445-哈希表/robin-hood.png" style="zoom:50%;" /></div>
+
+### 布谷鸟哈希
+
+- 使用两张哈希表，每次将 key 放在不引起冲突的表中，如果冲突不可避免，则替换其中一个 key，然后对被替换的 key 重新哈希
+- 可能会陷入死循环
+
+### 总结
+
+对于静态哈希，需要 DBMS 提前知道哈希表的大小，否则需要重建哈希表。
+
+## dynamic hashing schemes
+
+### 链式哈希
+
+每个 slot 维护不同的 bucket，使用指针将其串起来。
+
+<div align="center"><img src="/cmu15445-哈希表/chained-hashing.png" style="zoom:50%;" /></div>
+
+### 可扩展哈希
+
+- 防止链表一直增长
+- 多个指针可能指向同一个 bucket，需要动态调整
+- 查询、插入时使用 glbal counter 找到 key 所在的 bucket
+- 如果插入时 bucket 已满，则增加 local counter,并分裂 bucket
+<div align="center"><img src="/cmu15445-哈希表/extendible-hashing.png" style="zoom:50%;" /></div>
+
+### 线性哈希
+
+- 当一个 bucket 溢出时，不一定分裂该 bucket，而是分裂指针指向的 bucket
+- 如何分裂？使用第二个哈希函数
+- 使用多个哈希函数寻找 key 对应的 bucket,先使用第一个函数进行哈希，然后根据哈希后对应的 bucket 是否经历过分裂决定是否使用第二个哈希函数找到 bucket
+- 删除时可以回退指针
+- 当指针到达底部时（即每个 bucket 都经历过分裂后），可以删除第一个哈希函数
+
+<div align="center"><img src="/cmu15445-哈希表/linear-hashing.png" style="zoom:50%;" /></div>
+
+

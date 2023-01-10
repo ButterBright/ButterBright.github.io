@@ -1,0 +1,128 @@
+# cmu15445-时间戳排序并发控制
+
+
+<img src="/cover/timestamp-ordering.png"/>
+
+## T/O
+
+时间戳的分发有三种方式
+
+- 系统时间(物理时间)
+- 逻辑时间
+- 以上两种混合
+
+每个对象被 W-TS(X)和 R-TS(X)标记，用于标记最后一个写/读这个对象的时间戳。
+对于事务的每次操作，如果它处理了一个来自“未来”的对象，则终止这个事务并重新开始。
+
+### reads
+
+- TS(T) < W-TS(X)，终止事务并重新开始
+- 否则，允许读,更新 R-TS(X) = max(R-TS(X), TS(T)), 本地复制 X 从而保证可重复读
+
+### writes
+
+- TS(T) < W-TS(X)或 TS(T) < R-TS(X),终止事务并重新开始
+- 否则，允许写并更新 W-TS(X)，本地复制 X 从而保证可重复读
+<div align="center"><img src="/cmu15445-时间戳排序并发控制/timestamp-ordering.png" style="zoom:33%;" /></div>
+
+### Thomas write rule
+
+在 TS(T)仅小于 W-TS(X)的情况下，允许继续执行，但不会更新 W-TS(X)。
+
+thomas 写规则产生的调度不满足冲突可串行化但仍然是正确的，满足视图可串行化。
+
+### observation
+
+- 需要维护不同对象的时间戳，成本高，需要对冲突少的情况进行优化
+- 对于执行时间长的事务可能会饥饿（可能有其它事务读写导致 abort）
+
+## OCC
+
+每个事务维护一个私有的空间，读的时候将结果拷贝至私有空间中，写的时候也只修改该空间中的内容；如果没有冲突，最终将修改结果写回数据库。
+
+- 读阶段
+  - 像私有空间中读写数据
+- 校验阶段
+  - 检查是否存在冲突
+- 写阶段
+  - 写回数据库
+
+### validation phase
+
+时间戳在 **validation** 时确定。
+
+- forward validation
+  - 和未提交的事务比较是否冲突
+- backward validation
+  - 和已提交的事务比较是否冲突
+
+下图展示的是 forward validation。
+
+<div align="center"><img src="/cmu15445-时间戳排序并发控制/timestamp-ordering.png" style="zoom:33%;" /></div>
+
+若$T_i$在$T_j$开始前完成，该调度为一个串行化调度
+
+<div align="center"><img src="/cmu15445-时间戳排序并发控制/step1.png" style="zoom:33%;" /></div>
+
+若$T_i$在$T_j$写之前完成，需保证
+$$ Writeset(T_i) \cap Readset(T_j) = \emptyset $$
+
+<div align="center"><img src="/cmu15445-时间戳排序并发控制/step2.png" style="zoom:33%;" /></div>
+
+若$T_i$在$T_j$读完成之前完成，需保证
+
+$$
+Writeset(T_i) \cap Readset(T_j) = \emptyset
+$$
+
+$$
+Writeset(T_i) \cap Writeset(T_j) = \emptyset
+$$
+
+<div align="center"><img src="/cmu15445-时间戳排序并发控制/step3.png" style="zoom:33%;" /></div>
+
+### write phase
+
+- 顺序提交
+  - 使用锁保证每次只有一个事务提交
+- 并行提交
+  - 使用细粒度的锁
+  - 对主键上锁
+
+### observation
+
+- 可以很好地处理冲突少的情况
+- 复制数据成本较大，校验和写阶段可能产生瓶颈
+- 中断事务的成本更大
+
+## isolation levels
+
+### phantom problem
+
+由于插入数据导致前后两次读结果不一致。
+
+<div align="center"><img src="/cmu15445-时间戳排序并发控制/phantom.png" style="zoom:33%;" /></div>
+
+解决方法
+
+- 重新扫描
+- 谓词锁
+  - 锁住 where 字句查询的记录
+  <div align="center"><img src="/cmu15445-时间戳排序并发控制/predicate-lock.png" style="zoom:33%;" /></div>
+- 索引锁
+  - key-value lock:对叶子结点上锁
+  - gap lock：对索引间的间隙上锁
+  - key-range lock：对叶子结点和间隙都上锁
+  <div align="center"><img src="/cmu15445-时间戳排序并发控制/key-range-lock.png" style="zoom:33%;" /></div>
+
+如果没有索引锁，需要对表中每一页上锁，防止查询条应对应的属性被修改，同时还要对表上锁，防止新增或删除满足条件的数据。
+
+### weaker isolation levels
+
+隔离级别可分为可串行化、可重复读、读已提交和读未提交。弱隔离级别可能有脏读、不可重复读和幻读问题。
+
+<div align="center"><img src="/cmu15445-时间戳排序并发控制/isolation-levels.png" style="zoom:33%;" /></div>
+不同隔离级别的实现如下图所示。
+<div align="center"><img src="/cmu15445-时间戳排序并发控制/implementation.png" style="zoom:33%;" /></div>
+
+

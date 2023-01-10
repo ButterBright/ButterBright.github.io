@@ -1,0 +1,103 @@
+# cmu15445-两阶段锁并发控制
+
+
+<img src="/cover/2pl.png"/>
+
+## locks
+
+### 执行过程
+
+- 事务申请或升级锁
+- lock manager 同意或拒绝
+- 事务释放锁
+- lock manager 更新 lock table，记录哪些事务持有什么锁以及哪些事务正在等待锁
+
+<div align="center"><img src="/cmu15445-两阶段锁并发控制/plain.png" style="zoom:33%;" /></div>
+
+### 锁的类型
+
+- 共享锁
+- 互斥锁
+
+<div align="center"><img src="/cmu15445-两阶段锁并发控制/lock-types.png" style="zoom:33%;" /></div>
+
+## two phase locking
+
+每一个事务可分为扩张阶段和收缩阶段
+
+- 扩张阶段：只能进行锁的申请
+- 收缩阶段：只能进行锁的释放
+<div align="center"><img src="/cmu15445-两阶段锁并发控制/2pl.png" style="zoom:33%;" /></div>
+
+### cascading aborts
+
+两阶段锁会导致脏读（读取了未提交事务写入的数据），若写入数据的事务 abort，则会发生级联回滚，即所有读取该数据的事务均会撤销。
+
+### strict two phase locking
+
+为解决级联回滚的问题，采用强/严格两阶段锁协议，保证事务提交之后才能够释放锁。
+
+<div align="center"><img src="/cmu15445-两阶段锁并发控制/strict-2pl.png" style="zoom:33%;" /></div>
+
+### conclusion
+
+<div align="center"><img src="/cmu15445-两阶段锁并发控制/universe.png" style="zoom:33%;" /></div>
+
+## deadlocks
+
+<div align="center"><img src="/cmu15445-两阶段锁并发控制/deadlock.png" style="zoom:33%;" /></div>
+
+### detection
+
+通过等待图进行死锁检测。
+
+<div align="center"><img src="/cmu15445-两阶段锁并发控制/detection.png" style="zoom:33%;" /></div>
+
+### handling
+
+选择一个受害者重新开始或者直接终止。
+
+如何选取受害者？
+
+- 可以根据时间戳、事务执行进度、上锁的数量、导致级联删除的个数
+- 需要防止饥饿
+
+回滚长度？
+
+- 全部回滚，终止事务
+- 部分回滚之 save point，然后重新执行剩下的部分
+
+### prevention
+
+使所有事务均遵循同样的逻辑阻塞或者终止。
+
+- 时间戳越老，优先级越高
+- 两种策略
+  - wait-die(old waits for young)
+  - wound-wait(young waits for old)
+
+<div align="center"><img src="/cmu15445-两阶段锁并发控制/prevention.png" style="zoom:33%;" /></div>
+
+## lock granularity
+
+### hierarchy
+
+<div align="center"><img src="/cmu15445-两阶段锁并发控制/hierarchy.png" style="zoom:33%;" /></div>
+
+### intention locks
+
+- IS
+  - 更低级别被上了共享锁
+- IX
+  - 更低级别被上了互斥锁
+- SIX
+  - S+IX
+
+上锁原则
+
+- 想要加 S、IS 锁，必须检查父结点是否添加了 IS 锁
+- 想要加 X、IX、SIX 锁，必须检查父节点是否添加了 IX 锁
+
+<div align="center"><img src="/cmu15445-两阶段锁并发控制/granularity.png" style="zoom:33%;" /></div>
+
+
