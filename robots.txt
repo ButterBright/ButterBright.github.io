@@ -61,4 +61,4 @@ Disallow: /
 User-agent: ZoominfoBot
 Disallow: /
 
-Sitemap: http://butterbright.cc/sitemap.xml
+Sitemap: https://butterbright.github.io/sitemap.xml
