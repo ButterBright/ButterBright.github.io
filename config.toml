@@ -191,7 +191,7 @@ summaryLength = 120
       #  主页显示的网站标题 (支持 HTML 格式)
       title = ""
       # 主页显示的网站副标题 (允许 HTML 格式)
-      subtitle = "Just make it happen."
+      subtitle = ""
       # 是否为副标题显示打字机动画
       typeit = true
       # 是否显示社交账号
@@ -209,7 +209,7 @@ summaryLength = 120
 
   # 作者的社交信息设置
   [params.social]
-    GitHub = "xxxx"
+    GitHub = "ButterBright"
     Linkedin = ""
     Twitter = "xxxx"
     Instagram = "xxxx"
@@ -282,7 +282,7 @@ summaryLength = 120
     HackTheBox = ""
     RootMe= ""
     Phone = ""
-    Email = "xxxx@xxxx.com"
+    Email = "butterbright0504@gmail.com"
     RSS = true # 
 
   #  文章页面全局配置
