@@ -1,7 +1,7 @@
 ---
 title: "ai时代我们应该何去何从"
 date: 2023-03-27T09:06:51+08:00
-draft: false
+draft: true
 tags: [随笔]
 ---
 
