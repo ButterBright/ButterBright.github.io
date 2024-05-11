@@ -3,6 +3,7 @@ title: cmu15445-storage
 date: 2022-10-21 21:44:57
 # featuredImage: /cover/storage.png
 tags: [cmu15445]
+draft: true
 ---
 
 <img src="/cover/storage.png"/>
