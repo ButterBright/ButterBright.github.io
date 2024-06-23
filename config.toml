@@ -30,7 +30,7 @@ enableEmoji = true
 # 忽略一些构建错误
 ignoreErrors = ["error-remote-getjson", "error-missing-instagram-accesstoken"]
 
-summaryLength = 120
+summaryLength = 200
 
 # 作者配置
 [author]
